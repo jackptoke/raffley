@@ -1,0 +1,43 @@
+<.header>
+  Charity {@charity.id}
+  <:subtitle>This is a charity record from your database.</:subtitle>
+  <:actions>
+    <.link patch={~p"/charities/#{@charity}/show/edit"} phx-click={JS.push_focus()}>
+      <.button>Edit charity</.button>
+    </.link>
+  </:actions>
+</.header>
+
+<.list>
+  <:item title="Name">{@charity.name}</:item>
+  <:item title="Slug">{@charity.slug}</:item>
+</.list>
+
+<section class="mt-12">
+  <h4>Raffles</h4>
+  <ul class="raffles">
+    <li :for={raffle <- @charity.raffles}>
+      <.link navigate={~p"/raffles/#{raffle}"}>
+        <img src={raffle.image_path} alt={raffle.prize} />{raffle.prize}
+      </.link>
+    </li>
+  </ul>
+</section>
+
+<.back navigate={~p"/charities"}>Back to charities</.back>
+
+<.modal
+  :if={@live_action == :edit}
+  id="charity-modal"
+  show
+  on_cancel={JS.patch(~p"/charities/#{@charity}")}
+>
+  <.live_component
+    module={RaffleyWeb.CharityLive.FormComponent}
+    id={@charity.id}
+    title={@page_title}
+    action={@live_action}
+    charity={@charity}
+    patch={~p"/charities/#{@charity}"}
+  />
+</.modal>

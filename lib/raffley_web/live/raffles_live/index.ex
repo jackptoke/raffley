@@ -3,9 +3,14 @@ defmodule RaffleyWeb.RafflesLive do
 
   alias Raffley.Raffles
   alias RaffleyWeb.CustomComponents
+  alias Raffley.Charities
   # import RaffleyWeb.CustomComponents
 
   def mount(_params, _session, socket) do
+    socket =
+      socket
+      |> assign(:charity_options, Charities.get_charity_names_and_slugs())
+
     {:ok, socket, layout: {RaffleyWeb.Layouts, :app}}
   end
 
@@ -22,7 +27,7 @@ defmodule RaffleyWeb.RafflesLive do
         </:details>
       </CustomComponents.banner>
 
-      <.filter_form form={@form} />
+      <.filter_form form={@form} charity_options={@charity_options} />
 
       <div class="raffles" id="raffles" phx-update="stream">
         <.raffle_card :for={{dom_id, raffle} <- @streams.raffles} raffle={raffle} id={dom_id} />
@@ -41,6 +46,7 @@ defmodule RaffleyWeb.RafflesLive do
         prompt="Status"
         options={[:upcoming, :open, :closed]}
       />
+      <.input type="select" field={@form[:charity]} prompt="Charity" options={@charity_options} />
       <.input
         type="select"
         field={@form[:sort_by]}
@@ -48,7 +54,8 @@ defmodule RaffleyWeb.RafflesLive do
         options={[
           Prize: "prize",
           "Price: High to Low": "ticket_price_desc",
-          "Price: Low to Hight": "ticket_price_asc"
+          "Price: Low to Hight": "ticket_price_asc",
+          Charity: "charity"
         ]}
       />
       <.link patch={~p"/raffles"}>
@@ -65,6 +72,9 @@ defmodule RaffleyWeb.RafflesLive do
     ~H"""
     <.link navigate={~p"/raffles/#{@raffle}"} id={@id}>
       <div class="card">
+        <div class="charity">
+          {@raffle.charity.name}
+        </div>
         <img src={"#{@raffle.image_path}"} alt="" class="pic" />
         <h2>{@raffle.prize}</h2>
 
@@ -90,14 +100,17 @@ defmodule RaffleyWeb.RafflesLive do
 
   def handle_event("filter", params, socket) do
     params = filter_empty_parameters(params)
-    IO.inspect(params)
-    socket = push_patch(socket, to: ~p"/raffles?#{params}")
+
+    socket =
+      socket
+      |> push_patch(to: ~p"/raffles?#{params}")
+
     {:noreply, socket}
   end
 
   def filter_empty_parameters(params) do
     params
-    |> Map.take(~W(q status sort_by))
+    |> Map.take(~W(q status sort_by charity))
     |> Map.reject(fn {_, v} -> v == "" end)
   end
 end

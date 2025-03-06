@@ -1,11 +1,12 @@
 defmodule Raffley.Raffle do
-  defstruct [:id, :prize, :ticket_price, :status, :image_path, :description]
+  defstruct [:id, :prize, :ticket_price, :status, :image_path, :description, :charity_id]
 end
 
 defmodule Raffley.Raffles do
   alias Raffley.Raffles.Raffle
+  # alias Raffley.Charities.Charity
   alias Raffley.Repo
-  import Ecto.Query, only: [from: 2, where: 2, where: 3, order_by: 2]
+  import Ecto.Query, only: [from: 2, where: 2, where: 3, order_by: 2, preload: 2]
 
   def list_raffles() do
     Repo.all(Raffle)
@@ -13,7 +14,17 @@ defmodule Raffley.Raffles do
 
   def get_raffle(id) do
     Repo.get(Raffle, id)
+    |> Repo.preload(:charity)
   end
+
+  # def get_raffles_by_charity(charity_id) do
+  #   query =
+  #     from r in Raffle,
+  #       where: r.charity_id == ^charity_id,
+  #       order_by: [asc: :prize]
+
+  #   Repo.all(query)
+  # end
 
   def featured_raffles(raffle) do
     query =
@@ -44,7 +55,9 @@ defmodule Raffley.Raffles do
     Raffle
     |> with_status(filter["status"])
     |> search_by(filter["q"])
+    |> with_charity(filter["charity"])
     |> sort(filter["sort_by"])
+    |> preload(:charity)
     |> Repo.all()
   end
 
@@ -54,6 +67,20 @@ defmodule Raffley.Raffles do
   end
 
   def with_status(query, _), do: query
+
+  def with_charity(query, charity_slug) when charity_slug in ["", nil], do: query
+
+  def with_charity(query, charity_slug) do
+    # Below is the same
+    from r in query,
+      join: c in assoc(r, :charity),
+      where: c.slug == ^charity_slug
+
+    # from r in query,
+    #   join: c in Charity,
+    #   on: r.charity_id == c.id,
+    #   where: c.slug == ^charity_slug
+  end
 
   def search_by(query, q) when q in ["", nil], do: query
 
@@ -73,8 +100,14 @@ defmodule Raffley.Raffles do
     order_by(query, desc: :ticket_price)
   end
 
-  def sort(query, sort_by) do
-    IO.inspect(sort_by)
+  def sort(query, "charity") do
+    from r in query,
+      join: c in assoc(r, :charity),
+      order_by: c.name,
+      order_by: r.prize
+  end
+
+  def sort(query, _) do
     order_by(query, :id)
   end
 end
